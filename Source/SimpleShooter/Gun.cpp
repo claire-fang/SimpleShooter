@@ -36,6 +36,8 @@ void AGun::Tick(float DeltaTime)
 void AGun::PullTrigger()
 {
 	UGameplayStatics::SpawnEmitterAttached(MuzzleFlash, Mesh, TEXT("MuzzleFlashSocket"));
+	UGameplayStatics::SpawnSoundAttached(MuzzleSound, Mesh, TEXT("MuzzleFlashSocket"));
+
 
 	APawn* OwnerPawn = Cast<APawn>(GetOwner());
 	if (!OwnerPawn) return;
@@ -64,6 +66,7 @@ void AGun::PullTrigger()
 		FVector ShotDirection = -Rotation.Vector();
 		// DrawDebugPoint(GetWorld(), HitResult.Location, 10, FColor::Red, true);
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactEffect, HitResult.Location, ShotDirection.Rotation());
+		UGameplayStatics::SpawnSoundAtLocation(GetWorld(), ImpactSound, HitResult.Location, ShotDirection.Rotation());
 
 		AActor* HitActor = HitResult.GetActor();
 		if (HitActor)
