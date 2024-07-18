@@ -7,6 +7,7 @@
 #include "Gun.h"
 #include "Components/CapsuleComponent.h"
 #include "SimpleShooterGameModeBase.h"
+#include "Components/PostProcessComponent.h"
 
 // Sets default values
 AShooterCharacter::AShooterCharacter()
@@ -17,8 +18,14 @@ AShooterCharacter::AShooterCharacter()
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("Spring Arm"));
 	SpringArm->SetupAttachment(RootComponent);
 
-	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(SpringArm);
+	TPVCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("TPV Camera"));
+	TPVCamera->SetupAttachment(SpringArm);
+
+	FPVCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FPV Camera"));
+	FPVCamera->SetupAttachment(GetMesh(), TEXT("head"));
+
+	PostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("Post Process Component"));
+	PostProcessComponent->SetupAttachment(FPVCamera);
 }
 
 // Called when the game starts or when spawned
@@ -40,7 +47,10 @@ void AShooterCharacter::BeginPlay()
 void AShooterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	if (bIsFPV)
+	{
+		SetDOF();
+	}
 }
 
 // Called to bind functionality to input
@@ -56,6 +66,7 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis(TEXT("LookRightRate"), this, &AShooterCharacter::LookRightRate);
 
 	PlayerInputComponent->BindAction(TEXT("Shoot"), EInputEvent::IE_Pressed, this, &AShooterCharacter::Shoot);
+	PlayerInputComponent->BindAction(TEXT("TogglePerspective"), EInputEvent::IE_Pressed, this, &AShooterCharacter::TogglePerspective);
 }
 
 void AShooterCharacter::MoveForward(float AxisValue)
@@ -108,5 +119,52 @@ float AShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 
 bool AShooterCharacter::IsDead() const
 {
-	return Health == 0;
+	return Health <= 0;
+}
+
+void AShooterCharacter::SetDOF()
+{
+	FHitResult HitResult;
+	FVector StartLocation = FPVCamera->GetComponentLocation();
+	FVector EndLocation = StartLocation + HitDistance * FPVCamera->GetForwardVector();
+
+	FCollisionQueryParams IgnoredParams;
+	IgnoredParams.AddIgnoredActor(this);
+	IgnoredParams.AddIgnoredActor(Gun);
+
+	bool Hit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECollisionChannel::ECC_Visibility, IgnoredParams);
+
+	if (Hit)
+	{
+		FocalDistance = FVector::Dist(HitResult.Location, StartLocation);
+	}
+	else
+	{
+		FocalDistance = 100000;
+	}
+	// PostProcessComponent->Settings.DepthOfFieldFocalDistance = FocalDistance;
+	// UE_LOG(LogTemp, Display, TEXT("Focal Distance: %f"), FocalDistance);
+	FPVCamera->PostProcessSettings.bOverride_DepthOfFieldFocalDistance = true;
+	FPVCamera->PostProcessSettings.DepthOfFieldFocalDistance = FocalDistance;
+
+	FPVCamera->PostProcessSettings.bOverride_DepthOfFieldFocalRegion = true;
+	FPVCamera->PostProcessSettings.DepthOfFieldFocalRegion = 10;
+}
+
+void AShooterCharacter::TogglePerspective()
+{
+	if (TPVCamera->IsActive())
+	{
+		TPVCamera->SetActive(false);
+		FPVCamera->SetActive(true);
+		bUseControllerRotationYaw = true;
+		bIsFPV = true;
+	}
+	else
+	{
+		TPVCamera->SetActive(true);
+		FPVCamera->SetActive(false);
+		bUseControllerRotationYaw = false;
+		bIsFPV = false;
+	}
 }

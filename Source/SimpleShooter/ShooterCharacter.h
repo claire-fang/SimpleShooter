@@ -44,12 +44,22 @@ private:
 
 	void LookRightRate(float AxisValue);
 
+	void SetDOF();
+
+	void TogglePerspective();
+
 
 	UPROPERTY(VisibleAnywhere)
 	class USpringArmComponent* SpringArm;
 
 	UPROPERTY(VisibleAnywhere)
-	class UCameraComponent* Camera;
+	class UCameraComponent* TPVCamera;
+
+	UPROPERTY(EditAnywhere)
+	class UCameraComponent* FPVCamera;
+
+	UPROPERTY(VisibleAnywhere)
+	class UPostProcessComponent* PostProcessComponent;
 
 	UPROPERTY(EditAnywhere)
 	float RotationRate = 10;
@@ -65,4 +75,13 @@ private:
 
 	UPROPERTY(VisibleAnywhere)
 	float Health;
+
+	UPROPERTY(EditDefaultsOnly)
+	bool bIsFPV = false;
+
+	UPROPERTY(EditAnywhere)
+	float FocalDistance;
+
+	UPROPERTY(EditAnywhere)
+	float HitDistance = 1000;
 };
